@@ -92,7 +92,7 @@ function BigAssProperty (name, bigAssFan) {
 
     this.setFunctions = {}
 
-    this.createGetField = function(name, query, isSettable, additionalProp, trueOpt, falseOpt, optionalFilter) {
+    this.createGetField = function(name, query, isSettable, needsSet, additionalProp, trueOpt, falseOpt, optionalFilter) {
         var toSendOnUpdate = query.concat("GET");
         toSendOnUpdate = additionalProp ? toSendOnUpdate.concat(additionalProp) : toSendOnUpdate;
         this.allFieldsUpdateQuery[name] = toSendOnUpdate;
@@ -117,7 +117,8 @@ function BigAssProperty (name, bigAssFan) {
             }.bind(this))
 
             var toSetProperty = function () {
-                this.bigAssFan.send(query.concat("SET", value))
+                var toSendOnSet = needsSet ? query.concat("SET") : query;
+                this.bigAssFan.send(toSendOnSet.concat(value));
             }.bind(this)
 
             var isSuccesfullyUpdated = function() {
@@ -249,53 +250,53 @@ function BigAssFan (name, id, address, master) {
     this.waitTimeOnRetry = 250;  // For properties - in ms
 
     this.fan = new BigAssProperty('fan', this);
-    this.fan.createGetField('isOn', ['FAN', 'PWR'], true, undefined, "ON", "OFF");
-    this.fan.createGetField('speed', ['FAN', 'SPD'], true, 'ACTUAL'); // 0-7 on most fans - can also read min/max 
-    this.fan.createGetField('min', ['FAN', 'SPD'], true, 'MIN');
-    this.fan.createGetField('max', ['FAN', 'SPD'], true, 'MAX');
-    this.fan.createGetField('auto', ['FAN', 'AUTO'], true, undefined, "ON", "OFF"); // Fan sensor enabled
-    this.fan.createGetField('whoosh', ['FAN', 'WHOOSH'], true, "STATUS"); // ON, OFF
-    this.fan.createGetField('isSpinningForwards', ['FAN', 'DIR'], true, undefined, "FWD", "REV");
+    this.fan.createGetField('isOn', ['FAN', 'PWR'], true, true, undefined, "ON", "OFF");
+    this.fan.createGetField('speed', ['FAN', 'SPD'], true, true, 'ACTUAL'); // 0-7 on most fans - can also read min/max 
+    this.fan.createGetField('min', ['FAN', 'SPD'], true, true, 'MIN');
+    this.fan.createGetField('max', ['FAN', 'SPD'], true, true, 'MAX');
+    this.fan.createGetField('auto', ['FAN', 'AUTO'], true, true, undefined, "ON", "OFF"); // Fan sensor enabled
+    this.fan.createGetField('whoosh', ['FAN', 'WHOOSH'], true, false, "STATUS"); // ON, OFF
+    this.fan.createGetField('isSpinningForwards', ['FAN', 'DIR'], true, true, undefined, "FWD", "REV");
 
     this.light = new BigAssProperty('light', this);
-    this.light.createGetField('brightness', ['LIGHT', 'LEVEL'], true, 'ACTUAL'); // 0-16
-    this.light.createGetField('min', ['LIGHT', 'LEVEL'], true, 'MIN');
-    this.light.createGetField('max', ['LIGHT', 'LEVEL'], true, 'MAX');
-    this.light.createGetField('auto', ['LIGHT', 'AUTO'], true, undefined, 'ON', 'OFF'); // Light sensor enabled
-    this.light.createGetField('exists', ['DEVICE', 'LIGHT'], false, undefined, "PRESENT"); // Unknown false string.. WAY too lazy to unplug from fan
+    this.light.createGetField('brightness', ['LIGHT', 'LEVEL'], true, true, 'ACTUAL'); // 0-16
+    this.light.createGetField('min', ['LIGHT', 'LEVEL'], true, true, 'MIN');
+    this.light.createGetField('max', ['LIGHT', 'LEVEL'], true, true, 'MAX');
+    this.light.createGetField('auto', ['LIGHT', 'AUTO'], true, true, undefined, 'ON', 'OFF'); // Light sensor enabled
+    this.light.createGetField('exists', ['DEVICE', 'LIGHT'], false, false, undefined, "PRESENT"); // Unknown false string.. WAY too lazy to unplug from fan
 
     this.sensor = new BigAssProperty('sensor', this);
-    this.sensor.createGetField('isOccupied', ['SNSROCC', 'STATUS'], false, undefined, 'OCCUPIED', 'UNOCCUPIED');
-    this.sensor.createGetField('minTimeout', ['SNSROCC', 'TIMEOUT'], true, 'MIN'); // Seconds (ie 3600000 is 60 min)
-    this.sensor.createGetField('maxTimeout', ['SNSROCC', 'TIMEOUT'], true, 'MAX'); // Seconds
-    this.sensor.createGetField('timeout', ['SNSROCC', 'TIMEOUT'], true, 'CURR');   // Seconds
+    this.sensor.createGetField('isOccupied', ['SNSROCC', 'STATUS'], false, false, undefined, 'OCCUPIED', 'UNOCCUPIED');
+    this.sensor.createGetField('minTimeout', ['SNSROCC', 'TIMEOUT'], true, true, 'MIN'); // Seconds (ie 3600000 is 60 min)
+    this.sensor.createGetField('maxTimeout', ['SNSROCC', 'TIMEOUT'], true, true, 'MAX'); // Seconds
+    this.sensor.createGetField('timeout', ['SNSROCC', 'TIMEOUT'], true, true, 'CURR');   // Seconds
 
     this.smartmode = new BigAssProperty('smartmode', this);
-    this.smartmode.createGetField('smartmodeactual', ['SMARTMODE', 'ACTUAL'], true, undefined, 'OFF', 'COOLING', 'HEATING'); // Heating smartmode invokes LEARN;STATE;OFF and FAN;PWR;ON and FAN;SPD;ACTUAL;1 and WINTERMODE;STATE;ON and SMARTMODE;STATE;HEATING and SMARTMODE;ACTUAL;HEATING
-    this.smartmode.createGetField('smartmodestate', ['SMARTMODE', 'STATE'], true, undefined, 'LEARN', 'COOLING', 'HEATING', 'FOLLOWSTAT'); // FOLLOWSTAT is the works with nest option, it is followed by SMARTMODE;ACTUAL;OFF command
+    this.smartmode.createGetField('smartmodeactual', ['SMARTMODE', 'ACTUAL'], true, true, undefined, 'OFF', 'COOLING', 'HEATING'); // Heating smartmode invokes LEARN;STATE;OFF and FAN;PWR;ON and FAN;SPD;ACTUAL;1 and WINTERMODE;STATE;ON and SMARTMODE;STATE;HEATING and SMARTMODE;ACTUAL;HEATING
+    this.smartmode.createGetField('smartmodestate', ['SMARTMODE', 'STATE'], true, true, undefined, 'LEARN', 'COOLING', 'HEATING', 'FOLLOWSTAT'); // FOLLOWSTAT is the works with nest option, it is followed by SMARTMODE;ACTUAL;OFF command
 
     this.learn = new BigAssProperty('learn', this);
-    this.learn.createGetField('isOn', ['LEARN', 'STATE'], true, undefined, 'LEARN', 'OFF'); // LEARN appears to be the on command rather than ON, ie LEARN;STATE;LEARN. When turned on, two or three commands follow, WINTERMODE;STATE;OFF and SMARTMODE;STATE;COOLING and SMARTMODE;ACTUAL;COOLING
-    this.learn.createGetField('minSpeed', ['LEARN', 'MINSPEED'], true);
-    this.learn.createGetField('maxSpeed', ['LEARN', 'MAXSPEED'], true);
-    this.learn.createGetField('zeroTemp', ['LEARN', 'ZEROTEMP'], true); // This is a four digit number that represents the temperature in celsius (without a decimal) at which the fan automatically turns off in smart mode. For instance '2111' is 21.11 C which is 70 F 
+    this.learn.createGetField('isOn', ['LEARN', 'STATE'], true, true, undefined, 'LEARN', 'OFF'); // LEARN appears to be the on command rather than ON, ie LEARN;STATE;LEARN. When turned on, two or three commands follow, WINTERMODE;STATE;OFF and SMARTMODE;STATE;COOLING and SMARTMODE;ACTUAL;COOLING
+    this.learn.createGetField('minSpeed', ['LEARN', 'MINSPEED'], true, true);
+    this.learn.createGetField('maxSpeed', ['LEARN', 'MAXSPEED'], true, true);
+    this.learn.createGetField('zeroTemp', ['LEARN', 'ZEROTEMP'], true, true); // This is a four digit number that represents the temperature in celsius (without a decimal) at which the fan automatically turns off in smart mode. For instance '2111' is 21.11 C which is 70 F 
 
     this.sleep = new BigAssProperty('sleep', this);
-    this.sleep.createGetField('isOn', ['SLEEP', 'STATE'], true, undefined, 'ON', 'OFF');
-    this.sleep.createGetField('smartIdealTemp', ['SMARTSLEEP', 'IDEALTEMP'], true);
-    this.sleep.createGetField('minSpeed', ['SMARTSLEEP', 'MINSPEED'], true);
-    this.sleep.createGetField('maxSpeed', ['SMARTSLEEP', 'MAXSPEED'], true);
+    this.sleep.createGetField('isOn', ['SLEEP', 'STATE'], true, true, undefined, 'ON', 'OFF');
+    this.sleep.createGetField('smartIdealTemp', ['SMARTSLEEP', 'IDEALTEMP'], true, true);
+    this.sleep.createGetField('minSpeed', ['SMARTSLEEP', 'MINSPEED'], true, true);
+    this.sleep.createGetField('maxSpeed', ['SMARTSLEEP', 'MAXSPEED'], true, true);
 
     this.device = new BigAssProperty('device', this);
-    this.device.createGetField('beeper', ['DEVICE', 'BEEPER'], true, undefined, 'ON', 'OFF');
-    this.device.createGetField('indicators', ['DEVICE', 'INDICATORS'], true, undefined, 'ON', 'OFF');
-    this.device.createGetField('winterMode', ['WINTERMODE', 'STATE'], true, undefined, 'ON', 'OFF');
-    this.device.createGetField('height', ['WINTERMODE', 'HEIGHT'], true); // This is a whole number in meters, like 274 for 9 ft, 244 for 8 ft etc
-    this.device.createGetField('token', ['NW', 'TOKEN'], false); // ??? token for what? reference to api.bigassfans.com in packets
-    this.device.createGetField('dhcp', ['NW', 'DHCP'], true, undefined, 'ON', 'OFF');
-    this.device.createGetField('fw', ['FW', 'FW000003'], false); // What is the FW000003 for in the query?
-    this.device.createGetField('broadcastSSID', ['NW', 'SSID'], true);
-    this.device.createGetField('isAccessPoint', ['NW', 'AP'], true, 'STATUS', 'ON', 'OFF');
+    this.device.createGetField('beeper', ['DEVICE', 'BEEPER'], true, true, undefined, 'ON', 'OFF');
+    this.device.createGetField('indicators', ['DEVICE', 'INDICATORS'], true, true, undefined, 'ON', 'OFF');
+    this.device.createGetField('winterMode', ['WINTERMODE', 'STATE'], true, true, undefined, 'ON', 'OFF');
+    this.device.createGetField('height', ['WINTERMODE', 'HEIGHT'], true, true); // This is a whole number in meters, like 274 for 9 ft, 244 for 8 ft etc
+    this.device.createGetField('token', ['NW', 'TOKEN'], false, false); // ??? token for what? reference to api.bigassfans.com in packets
+    this.device.createGetField('dhcp', ['NW', 'DHCP'], true, true, undefined, 'ON', 'OFF');
+    this.device.createGetField('fw', ['FW', 'FW000003'], false, false); // What is the FW000003 for in the query?
+    this.device.createGetField('broadcastSSID', ['NW', 'SSID'], true, true);
+    this.device.createGetField('isAccessPoint', ['NW', 'AP'], true, true, 'STATUS', 'ON', 'OFF');
 
 
     // Handles incoming messages from the fanMaster
